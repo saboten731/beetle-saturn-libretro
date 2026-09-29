@@ -1,0 +1,37 @@
+name: Temporary Beetle Saturn Android arm64 build
+
+on:
+  push:
+    branches:
+      - fix/lent-framebuffer-menu-crash
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Android SDK and NDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ndk;27.2.12479018
+
+      - name: Build arm64-v8a core
+        run: |
+          export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/27.2.12479018"
+          cd jni
+          "$ANDROID_NDK_HOME/ndk-build" \
+            NDK_PROJECT_PATH=. \
+            APP_BUILD_SCRIPT=Android.mk \
+            APP_ABI=arm64-v8a \
+            -j2
+          file libs/arm64-v8a/libretro.so
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beetle-saturn-android-arm64
+          path: jni/libs/arm64-v8a/libretro.so
+          if-no-files-found: error
