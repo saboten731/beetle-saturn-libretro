@@ -161,6 +161,7 @@ static const bool PrevInterlaced = false;
 #endif
 
 static MDFN_Surface *surf = NULL;
+static bool         lent_fallback_logged;
 
 /* RETRO_ENVIRONMENT_GET_CURRENT_SOFTWARE_FRAMEBUFFER: a buffer of the
  * frontend's own, the size of the scanout surface, that this frame
@@ -1581,6 +1582,33 @@ void retro_run(void)
    }
 
    pix += frame_surf->pitchinpix * (linevisfirst << PrevInterlaced) + overscan_mask;
+
+   if (frame_surf == &lent_surf &&
+       (pix != frame_surf->pixels ||
+        game_width != (unsigned)frame_surf->w ||
+        game_height != (unsigned)frame_surf->h))
+   {
+      size_t pixel_offset = (size_t)(pix - frame_surf->pixels);
+
+      if (!lent_fallback_logged)
+      {
+         log_cb(RETRO_LOG_INFO,
+               "[Beetle Saturn] Lent framebuffer fallback: "
+               "backing=%dx%d, output=%ux%u, offset=%zu pixels, pitch=%zu bytes\n",
+               (int)frame_surf->w, (int)frame_surf->h,
+               game_width, game_height,
+               pixel_offset,
+               (size_t)frame_surf->pitchinpix * sizeof(uint32_t));
+         lent_fallback_logged = true;
+      }
+
+      memcpy(surf->pixels,
+            frame_surf->pixels,
+            (size_t)surf->pitchinpix *
+            (size_t)surf->h *
+            sizeof(uint32_t));
+      pix = surf->pixels + pixel_offset;
+   }
 
    fb = pix;
 
